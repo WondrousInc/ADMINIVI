@@ -1,99 +1,91 @@
--- AdminIV Script for Delta Executor
+-- AdminIV Spawner Script (Delta Executor)
 
--- Función para abrir la consola
-local function openConsole()
-    print("Consola abierta. Escribe tus comandos aquí.")
-end
+local plr = game.Players.LocalPlayer
 
--- Función para detectar y activar todos los comandos
-local function autoDetectCommands()
-    local commands = {}
-    local detectedCommands = {}
+-- GUI principal
+local ScreenGui = Instance.new("ScreenGui", plr.PlayerGui)
+local Frame = Instance.new("Frame", ScreenGui)
+Frame.Size = UDim2.new(0, 400, 0, 500)
+Frame.Position = UDim2.new(0.5, -200, 0.5, -250)
+Frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+Frame.Active = true
+Frame.Draggable = true
 
-    -- Función para ejecutar un comando
-    local function executeCommand(command)
-        print("Ejecutando comando: " .. command)
-        game:GetService("RunService"):RunScript(command)
-    end
+local Title = Instance.new("TextLabel", Frame)
+Title.Size = UDim2.new(1,0,0,40)
+Title.Text = "AdminIV Spawner"
+Title.BackgroundColor3 = Color3.fromRGB(50,50,50)
+Title.TextColor3 = Color3.fromRGB(0,255,0)
+Title.Font = Enum.Font.SourceSansBold
+Title.TextSize = 20
 
-    -- Buscar comandos en el servidor
-    for _, script in ipairs(game:GetService("ServerScriptService"):GetChildren()) do
-        if script:IsA("Script") or script:IsA("LocalScript") then
-            local source = script.Source
-            for command in source:gmatch("%;%w+") do
-                if not table.find(commands, command) then
-                    table.insert(commands, command)
-                end
+local SearchBtn = Instance.new("TextButton", Frame)
+SearchBtn.Size = UDim2.new(1,-20,0,40)
+SearchBtn.Position = UDim2.new(0,10,0,50)
+SearchBtn.Text = "Buscar Exclusivos"
+SearchBtn.BackgroundColor3 = Color3.fromRGB(0,170,0)
+SearchBtn.TextColor3 = Color3.new(1,1,1)
+SearchBtn.Font = Enum.Font.SourceSansBold
+SearchBtn.TextSize = 18
+
+local List = Instance.new("ScrollingFrame", Frame)
+List.Size = UDim2.new(1,-20,0,380)
+List.Position = UDim2.new(0,10,0,100)
+List.CanvasSize = UDim2.new(0,0,3,0)
+List.BackgroundColor3 = Color3.fromRGB(40,40,40)
+
+-- Función para buscar objetos
+local function scanGame()
+    local found = {}
+    
+    local function scanFolder(folder)
+        for _, obj in ipairs(folder:GetChildren()) do
+            if obj:IsA("Model") or obj:IsA("Part") or obj:IsA("Accessory") then
+                table.insert(found, obj)
+            end
+            if #obj:GetChildren() > 0 then
+                scanFolder(obj)
             end
         end
     end
+    
+    scanFolder(game:GetService("ReplicatedStorage"))
+    scanFolder(game:GetService("Workspace"))
+    
+    return found
+end
 
-    -- Buscar comandos en el ReplicatedStorage
-    for _, module in ipairs(game:GetService("ReplicatedStorage"):GetChildren()) do
-        if module:IsA("ModuleScript") then
-            local source = module.Source
-            for command in source:gmatch("%;%w+") do
-                if not table.find(commands, command) then
-                    table.insert(commands, command)
-                end
+-- Mostrar lista de spawns
+local function showObjects(objects)
+    List:ClearAllChildren()
+    local y = 0
+    for _, obj in ipairs(objects) do
+        local Btn = Instance.new("TextButton", List)
+        Btn.Size = UDim2.new(1,-10,0,40)
+        Btn.Position = UDim2.new(0,5,0,y)
+        Btn.Text = obj.Name
+        Btn.BackgroundColor3 = Color3.fromRGB(70,70,70)
+        Btn.TextColor3 = Color3.new(1,1,1)
+        Btn.Font = Enum.Font.SourceSansBold
+        Btn.TextSize = 16
+        Btn.MouseButton1Click:Connect(function()
+            local clone = obj:Clone()
+            clone.Parent = workspace
+            if clone:IsA("Model") and clone:FindFirstChild("PrimaryPart") then
+                clone:SetPrimaryPartCFrame(plr.Character.HumanoidRootPart.CFrame * CFrame.new(0,5,0))
+            elseif clone:IsA("Part") then
+                clone.CFrame = plr.Character.HumanoidRootPart.CFrame * CFrame.new(0,5,0)
             end
-        end
-    end
-
-    -- Ejecutar cada comando detectado
-    for _, command in ipairs(commands) do
-        executeCommand(command)
-        table.insert(detectedCommands, command)
-    end
-
-    return detectedCommands
-end
-
--- Función para mostrar todos los comandos disponibles
-local function showAllCommands(detectedCommands)
-    print("Comandos disponibles:")
-    for _, command in ipairs(detectedCommands) do
-        print(command)
-    end
-end
-
--- Función para otorgar permisos de administrador
-local function grantAdminPermissions()
-    local player = game.Players.LocalPlayer
-    local adminScript = Instance.new("Script")
-    adminScript.Parent = game:GetService("Lighting")
-    adminScript.Name = "AdminScript"
-
-    adminScript.Source = [[
-        local player = game.Players.LocalPlayer
-        player:WaitForChild("PlayerGui"):WaitForChild("ScreenGui"):WaitForChild("AdminGui").Enabled = true
-        player:WaitForChild("PlayerGui"):WaitForChild("ScreenGui"):WaitForChild("AdminGui"):WaitForChild("AdminButton").MouseButton1Click:Connect(function()
-            print("Admin permissions granted.")
+            print("Spawned: "..obj.Name)
         end)
-    ]]
-
-    wait(1)
-    adminScript:Destroy()
+        y = y + 45
+    end
 end
 
--- Función principal
-local function main()
-    openConsole()
-
-    -- Esperar a que el jugador escriba el comando para auto-detectar
-    game:GetService("UserInputService").InputBegan:Connect(function(input, gameProcessed)
-        if not gameProcessed then
-            if input.KeyCode == Enum.KeyCode.Semicolon then
-                local command = input:GetText()
-                if command == "autodetecte un uncensure commands" then
-                    local detectedCommands = autoDetectCommands()
-                    showAllCommands(detectedCommands)
-                    grantAdminPermissions()
-                end
-            end
-        end
-    end)
-end
-
--- Ejecutar la función principal
-$main()$
+-- Botón verde acción
+SearchBtn.MouseButton1Click:Connect(function()
+    print("Buscando objetos...")
+    local objects = scanGame()
+    print("Encontrados: "..#objects)
+    showObjects(objects)
+end)
